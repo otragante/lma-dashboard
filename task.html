@@ -1,9 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>2025 Summer Tasks</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getFirestore, collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBnp8schRYyTk9joRVYvynFgor_4cuZrl8",
+      authDomain: "task-manager-557f4.firebaseapp.com",
+      projectId: "task-manager-557f4",
+      storageBucket: "task-manager-557f4.firebasestorage.app",
+      messagingSenderId: "989477086806",
+      appId: "1:989477086806:web:5662ab8e68e7e8202b7df7",
+      measurementId: "G-37BJ0MWEH6"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const category = urlParams.get('category');
+
+    const titleEl = document.getElementById('title');
+    const taskListEl = document.getElementById('taskList');
+    const taskInput = document.getElementById('taskInput');
+
+    titleEl.innerText = `${category} Tasks`;
+
+    async function renderTasks() {
+      taskListEl.innerHTML = '';
+      const snapshot = await getDocs(collection(db, category));
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        const li = document.createElement('li');
+        li.className = data.completed ? 'completed' : '';
+
+        const span = document.createElement('span');
+        span.innerText = data.text;
+        span.onclick = () => toggleTask(docSnap.id, data);
+
+        const actions = document.createElement('div');
+        actions.className = 'actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.innerText = 'Edit';
+        editBtn.onclick = () => editTask(docSnap.id, data);
+
+        const delBtn = document.createElement('button');
+        delBtn.innerText = 'Delete';
+        delBtn.onclick = () => deleteTask(docSnap.id);
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+
+        li.appendChild(span);
+        li.appendChild(actions);
+        taskListEl.appendChild(li);
+      });
+    }
+
+    async function addTask() {
+      const text = taskInput.value.trim();
+      if (text) {
+        await addDoc(collection(db, category), { text, completed: false });
+        taskInput.value = '';
+        renderTasks();
+      }
+    }
+
+    async function toggleTask(id, data) {
+      await updateDoc(doc(db, category, id), { completed: !data.completed });
+      renderTasks();
+    }
+
+    async function editTask(id, data) {
+      const newText = prompt('Edit task:', data.text);
+      if (newText !== null) {
+        await updateDoc(doc(db, category, id), { text: newText });
+        renderTasks();
+      }
+    }
+
+    async function deleteTask(id) {
+      if (confirm('Delete this task?')) {
+        await deleteDoc(doc(db, category, id));
+        renderTasks();
+      }
+    }
+
+    renderTasks();
+    window.addTask = addTask;
+  </script>
   <style>
     body {
       margin: 0;
@@ -94,84 +184,5 @@
   <input type="text" id="taskInput" placeholder="New Task...">
   <button onclick="addTask()">Add Task</button>
   <ul id="taskList"></ul>
-
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const category = urlParams.get('category');
-    const titleEl = document.getElementById('title');
-    const taskListEl = document.getElementById('taskList');
-    const taskInput = document.getElementById('taskInput');
-
-    titleEl.innerText = `${category} Tasks`;
-
-    let taskData = JSON.parse(localStorage.getItem('taskData') || '{}');
-    if (!taskData[category]) taskData[category] = [];
-
-    function renderTasks() {
-      taskListEl.innerHTML = '';
-      taskData[category].forEach((task, index) => {
-        const li = document.createElement('li');
-        li.className = task.completed ? 'completed' : '';
-
-        const span = document.createElement('span');
-        span.innerText = task.text;
-        span.onclick = () => toggleTask(index);
-
-        const actions = document.createElement('div');
-        actions.className = 'actions';
-
-        const editBtn = document.createElement('button');
-        editBtn.innerText = 'Edit';
-        editBtn.onclick = () => editTask(index);
-
-        const delBtn = document.createElement('button');
-        delBtn.innerText = 'Delete';
-        delBtn.onclick = () => deleteTask(index);
-
-        actions.appendChild(editBtn);
-        actions.appendChild(delBtn);
-
-        li.appendChild(span);
-        li.appendChild(actions);
-        taskListEl.appendChild(li);
-      });
-    }
-
-    function addTask() {
-      const text = taskInput.value.trim();
-      if (text) {
-        taskData[category].push({ text, completed: false });
-        saveAndRender();
-        taskInput.value = '';
-      }
-    }
-
-    function toggleTask(index) {
-      taskData[category][index].completed = !taskData[category][index].completed;
-      saveAndRender();
-    }
-
-    function editTask(index) {
-      const newText = prompt('Edit task:', taskData[category][index].text);
-      if (newText !== null) {
-        taskData[category][index].text = newText;
-        saveAndRender();
-      }
-    }
-
-    function deleteTask(index) {
-      if (confirm('Delete this task?')) {
-        taskData[category].splice(index, 1);
-        saveAndRender();
-      }
-    }
-
-    function saveAndRender() {
-      localStorage.setItem('taskData', JSON.stringify(taskData));
-      renderTasks();
-    }
-
-    renderTasks();
-  </script>
 </body>
 </html>
